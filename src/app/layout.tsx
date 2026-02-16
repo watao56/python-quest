@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Python Quest - コードを書いて、世界を冒険しよう！",
-  description: "子供向けPython学習プラットフォーム。ブロックプログラミングからPythonへの段階的学習。",
+  title: 'Python Quest - コードを書いて、世界を冒険しよう！',
+  description: '子供向けPython学習プラットフォーム。ブロックプログラミングからPythonへの段階的学習。',
 };
 
 export default function RootLayout({
@@ -19,9 +19,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[#0a0a1a] text-white antialiased">
-        {children}
-      </body>
+      <body className="bg-[#0a0a1a] text-white antialiased text-base">{children}</body>
     </html>
   );
 }

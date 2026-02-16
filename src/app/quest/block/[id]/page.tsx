@@ -14,6 +14,17 @@ import XpBar from '@/components/XpBar';
 
 const BlocklyEditor = dynamic(() => import('@/components/BlocklyEditor'), { ssr: false });
 
+/** Normalize for answer comparison: full-width/half-width, trim whitespace */
+function normalizeOutput(s: string): string {
+  return s
+    .replace(/\s+$/gm, '')
+    .trim()
+    // full-width alphanumeric → half-width
+    .replace(/[\uff01-\uff5e]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+    // full-width space → half-width
+    .replace(/\u3000/g, ' ');
+}
+
 export default function QuestPage() {
   const params = useParams();
   const router = useRouter();
@@ -31,6 +42,7 @@ export default function QuestPage() {
   const [skulptReady, setSkulptReady] = useState(false);
   const [hintIndex, setHintIndex] = useState(-1);
   const [showMissionIntro, setShowMissionIntro] = useState(true);
+  const [activeTab, setActiveTab] = useState<'editor' | 'info' | 'output'>('editor');
 
   useEffect(() => {
     loadSkulpt().then(setSkulptReady);
@@ -43,12 +55,13 @@ export default function QuestPage() {
   if (!quest) {
     return (
       <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center text-white">
-        <p>クエストが見つかりません</p>
+        <p className="text-base">クエストが見つかりません</p>
       </div>
     );
   }
 
   const progress = getQuestProgress(quest.id);
+  const totalQuests = quests.filter((q) => q.worldId === quest.worldId).length;
 
   const handleRun = async () => {
     if (!skulptReady || isRunning) return;
@@ -63,22 +76,21 @@ export default function QuestPage() {
 
     if (!result.success) {
       setError(result.error || 'エラーが発生しました');
+      setActiveTab('output');
       return;
     }
 
-    // Check answer
-    const normalize = (s: string) => s.replace(/\s+$/gm, '').trim();
-    if (normalize(result.output) === normalize(quest.expectedOutput)) {
-      // Calculate stars
+    if (normalizeOutput(result.output) === normalizeOutput(quest.expectedOutput)) {
       const p = getQuestProgress(quest.id);
       let stars = 1;
       if (p.hintsUsed === 0) stars = 2;
       if (p.hintsUsed === 0 && p.attempts <= 1) stars = 3;
       setClearStars(stars);
       clearQuest(quest.id, stars, quest.rewards.xp, quest.rewards.coins);
-      // Fix 5: Delay showing clear modal so user can see output first
+      setActiveTab('output');
       setTimeout(() => setShowClear(true), 2500);
     } else {
+      setActiveTab('output');
       setShowFail(true);
     }
   };
@@ -94,86 +106,106 @@ export default function QuestPage() {
   const nextQuestId = `1-${parseInt(quest.id.split('-')[1]) + 1}`;
   const nextQuest = quests.find((q) => q.id === nextQuestId);
 
+  const sidebarContent = (
+    <div className="flex flex-col gap-3 p-4 overflow-y-auto h-full">
+      <motion.div
+        initial={false}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-gradient-to-br from-[#1e1e3a] to-[#2a1a4a] rounded-xl p-4 border border-[#333366]"
+      >
+        <span className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-sm font-bold px-3 py-1 rounded-full mb-2">
+          🌱 W1 クエスト {quest.order}/{totalQuests}
+        </span>
+        <h2 className="text-lg font-bold">{quest.title}</h2>
+      </motion.div>
+
+      <div className="flex items-start gap-3 bg-[#1e1e3a] rounded-lg p-3 border border-[#2a2a4a]">
+        <div className="text-3xl flex-shrink-0" style={{ animation: 'float 4s ease-in-out infinite' }}>
+          {quest.npc.emoji}
+        </div>
+        <div>
+          <div className="text-sm text-purple-500 font-bold mb-1">{quest.npc.name}</div>
+          <div className="text-sm text-purple-200 leading-relaxed whitespace-pre-line">
+            {quest.npc.dialogue}
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="bg-[#0a0a1a] border-2 border-yellow-500 rounded-lg p-3"
+        style={{ boxShadow: '0 0 12px rgba(245,158,11,0.08)' }}
+      >
+        <div className="text-sm text-yellow-500 font-bold mb-2">🎯 ミッション</div>
+        <div className="font-mono text-base text-yellow-400 bg-[#1e1e2a] rounded-md p-2 border-l-[3px] border-yellow-500">
+          {quest.description}
+        </div>
+      </div>
+
+      {hintIndex >= 0 && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3"
+        >
+          <div className="text-sm text-yellow-500 font-bold mb-1">💡 ヒント {hintIndex + 1}</div>
+          <p className="text-sm text-yellow-200">{quest.hints[hintIndex]}</p>
+        </motion.div>
+      )}
+
+      <div className="flex gap-2 justify-center mt-auto">
+        <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
+          <div className="text-lg">✨</div>
+          <div className="text-sm text-yellow-400 font-bold">+{quest.rewards.xp} XP</div>
+        </div>
+        <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
+          <div className="text-lg">💰</div>
+          <div className="text-sm text-yellow-400 font-bold">+{quest.rewards.coins}</div>
+        </div>
+      </div>
+
+      <button
+        onClick={() => router.push('/')}
+        className="text-sm text-slate-500 hover:text-slate-300 transition-colors mt-2"
+      >
+        ← マップに戻る
+      </button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white flex flex-col">
       <XpBar />
 
-      <div className="flex-1 grid grid-cols-[280px_1fr_1fr] h-[calc(100vh-48px)]">
-        {/* Sidebar */}
-        <div className="bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] p-4 overflow-y-auto flex flex-col gap-3">
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="bg-gradient-to-br from-[#1e1e3a] to-[#2a1a4a] rounded-xl p-4 border border-[#333366]"
-          >
-            <span className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-2">
-              🌱 W1 クエスト {quest.order}/3
-            </span>
-            <h2 className="text-lg font-bold">{quest.title}</h2>
-          </motion.div>
-
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-start gap-3 bg-[#1e1e3a] rounded-lg p-3 border border-[#2a2a4a]"
-          >
-            <div className="text-3xl flex-shrink-0" style={{ animation: 'float 4s ease-in-out infinite' }}>
-              {quest.npc.emoji}
-            </div>
-            <div>
-              <div className="text-xs text-purple-500 font-bold mb-1">{quest.npc.name}</div>
-              <div className="text-xs text-purple-200 leading-relaxed whitespace-pre-line">
-                {quest.npc.dialogue}
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-[#0a0a1a] border-2 border-yellow-500 rounded-lg p-3"
-            style={{ boxShadow: '0 0 12px rgba(245,158,11,0.08)' }}
-          >
-            <div className="text-xs text-yellow-500 font-bold mb-2">🎯 ミッション</div>
-            <div className="font-mono text-sm text-yellow-400 bg-[#1e1e2a] rounded-md p-2 border-l-3 border-yellow-500" style={{ borderLeftWidth: '3px' }}>
-              {quest.description}
-            </div>
-          </motion.div>
-
-          {hintIndex >= 0 && (
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3"
-            >
-              <div className="text-xs text-yellow-500 font-bold mb-1">💡 ヒント {hintIndex + 1}</div>
-              <p className="text-xs text-yellow-200">{quest.hints[hintIndex]}</p>
-            </motion.div>
-          )}
-
-          <div className="flex gap-2 justify-center mt-auto">
-            <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
-              <div className="text-lg">✨</div>
-              <div className="text-xs text-yellow-400 font-bold">+{quest.rewards.xp} XP</div>
-            </div>
-            <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
-              <div className="text-lg">💰</div>
-              <div className="text-xs text-yellow-400 font-bold">+{quest.rewards.coins}</div>
-            </div>
-          </div>
-
+      {/* Mobile tabs */}
+      <div className="md:hidden flex bg-[#12122a] border-b-2 border-[#1e1e3a]">
+        {(['info', 'editor', 'output'] as const).map((tab) => (
           <button
-            onClick={() => router.push('/')}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors mt-2"
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-2 text-sm font-bold transition-colors ${
+              activeTab === tab
+                ? 'text-purple-400 border-b-2 border-purple-400'
+                : 'text-slate-500'
+            }`}
           >
-            ← マップに戻る
+            {tab === 'info' ? '📋 情報' : tab === 'editor' ? '🧩 エディタ' : '📺 出力'}
           </button>
+        ))}
+      </div>
+
+      {/* Desktop: 3-column layout / Tablet: 2-column / Mobile: tab switching */}
+      <div className="flex-1 flex flex-col md:grid md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_1fr] h-[calc(100vh-48px)]">
+        {/* Sidebar - hidden on mobile unless info tab */}
+        <div className={`bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] ${
+          activeTab === 'info' ? 'flex flex-col' : 'hidden'
+        } md:flex md:flex-col overflow-y-auto`}>
+          {sidebarContent}
         </div>
 
         {/* Blockly Editor */}
-        <div className="flex flex-col bg-[#1a1a2e]">
+        <div className={`flex flex-col bg-[#1a1a2e] ${
+          activeTab === 'editor' ? 'flex' : 'hidden'
+        } md:flex min-h-0`}>
           <div className="bg-[#12122a] px-4 py-2 flex justify-between items-center border-b-2 border-[#1e1e3a]">
             <div className="flex items-center gap-2 text-sm text-slate-400">
               <span className="w-2 h-2 rounded-full bg-yellow-500" />
@@ -188,22 +220,26 @@ export default function QuestPage() {
               ▶ 実行！
             </button>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-h-[400px]">
             <BlocklyEditor availableBlocks={quest.availableBlocks} onCodeChange={handleCodeChange} />
           </div>
           {code && (
             <div className="bg-[#0d0d1a] border-t border-[#1e1e3a] px-4 py-2 relative z-10 pointer-events-none">
-              <div className="text-xs text-slate-500 mb-1">🐍 生成されたPythonコード:</div>
-              <pre className="text-xs text-green-400 font-mono">{code}</pre>
+              <div className="text-sm text-slate-500 mb-1">🐍 生成されたPythonコード:</div>
+              <pre className="text-sm text-green-400 font-mono">{code}</pre>
             </div>
           )}
         </div>
 
-        {/* Output */}
-        <OutputPanel output={output} error={error} isRunning={isRunning} hasRun={hasRun} />
+        {/* Output - visible as third column on lg, tab on mobile */}
+        <div className={`${
+          activeTab === 'output' ? 'flex flex-col' : 'hidden'
+        } lg:flex lg:flex-col`}>
+          <OutputPanel output={output} error={error} isRunning={isRunning} hasRun={hasRun} />
+        </div>
       </div>
 
-      {/* Fix 7: Mission intro modal */}
+      {/* Mission intro modal */}
       <AnimatePresence>
         {showMissionIntro && (
           <motion.div
@@ -227,7 +263,7 @@ export default function QuestPage() {
               >
                 {quest.npc.emoji}
               </motion.div>
-              <div className="text-sm text-purple-400 font-bold mb-2">{quest.npc.name}</div>
+              <div className="text-base text-purple-400 font-bold mb-2">{quest.npc.name}</div>
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -243,7 +279,7 @@ export default function QuestPage() {
                 className="bg-[#0a0a1a] border-2 border-yellow-500 rounded-xl p-4 mb-6"
                 style={{ boxShadow: '0 0 12px rgba(245,158,11,0.15)' }}
               >
-                <div className="text-xs text-yellow-500 font-bold mb-2">🎯 ミッション</div>
+                <div className="text-sm text-yellow-500 font-bold mb-2">🎯 ミッション</div>
                 <div className="font-mono text-lg text-yellow-400">{quest.description}</div>
               </motion.div>
               <motion.button
@@ -283,6 +319,7 @@ export default function QuestPage() {
         isOpen={showFail}
         expected={quest.expectedOutput}
         actual={output}
+        attempts={getQuestProgress(quest.id).attempts}
         onRetry={() => setShowFail(false)}
         onHint={handleHint}
       />

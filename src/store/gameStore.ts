@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 const LEVEL_TABLE = [
   { level: 1, xp: 0, title: 'コードのたまご' },
@@ -24,6 +25,7 @@ interface GameState {
   xp: number;
   coins: number;
   questProgress: Record<string, QuestProgress>;
+  _hydrated: boolean;
   getLevel: () => { level: number; title: string; currentXp: number; nextXp: number };
   addXp: (amount: number) => void;
   addCoins: (amount: number) => void;
@@ -33,98 +35,86 @@ interface GameState {
   addAttempt: (questId: string) => void;
 }
 
-const loadState = () => {
-  if (typeof window === 'undefined') return { xp: 0, coins: 0, questProgress: {} };
-  try {
-    const saved = localStorage.getItem('python-quest-save');
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return { xp: 0, coins: 0, questProgress: {} };
-};
+export const useGameStore = create<GameState>()(
+  persist(
+    (set, get) => ({
+      xp: 0,
+      coins: 0,
+      questProgress: { '1-1': { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 } },
+      _hydrated: false,
 
-export const useGameStore = create<GameState>((set, get) => {
-  const initial = loadState();
-  
-  // Ensure quest 1-1 is available
-  if (!initial.questProgress['1-1']) {
-    initial.questProgress['1-1'] = { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
-  }
-
-  const save = () => {
-    if (typeof window === 'undefined') return;
-    const { xp, coins, questProgress } = get();
-    localStorage.setItem('python-quest-save', JSON.stringify({ xp, coins, questProgress }));
-  };
-
-  return {
-    xp: initial.xp,
-    coins: initial.coins,
-    questProgress: initial.questProgress,
-
-    getLevel: () => {
-      const xp = get().xp;
-      let current = LEVEL_TABLE[0];
-      let next = LEVEL_TABLE[1];
-      for (let i = LEVEL_TABLE.length - 1; i >= 0; i--) {
-        if (xp >= LEVEL_TABLE[i].xp) {
-          current = LEVEL_TABLE[i];
-          next = LEVEL_TABLE[i + 1] || LEVEL_TABLE[i];
-          break;
+      getLevel: () => {
+        const xp = get().xp;
+        let current = LEVEL_TABLE[0];
+        let next = LEVEL_TABLE[1];
+        for (let i = LEVEL_TABLE.length - 1; i >= 0; i--) {
+          if (xp >= LEVEL_TABLE[i].xp) {
+            current = LEVEL_TABLE[i];
+            next = LEVEL_TABLE[i + 1] || LEVEL_TABLE[i];
+            break;
+          }
         }
-      }
-      return { level: current.level, title: current.title, currentXp: xp - current.xp, nextXp: next.xp - current.xp };
-    },
+        return { level: current.level, title: current.title, currentXp: xp - current.xp, nextXp: next.xp - current.xp };
+      },
 
-    addXp: (amount) => {
-      set((s) => ({ xp: s.xp + amount }));
-      save();
-    },
+      addXp: (amount) => set((s) => ({ xp: s.xp + amount })),
+      addCoins: (amount) => set((s) => ({ coins: s.coins + amount })),
 
-    addCoins: (amount) => {
-      set((s) => ({ coins: s.coins + amount }));
-      save();
-    },
+      getQuestProgress: (questId) => {
+        return get().questProgress[questId] || { status: 'locked', stars: 0, attempts: 0, hintsUsed: 0 };
+      },
 
-    getQuestProgress: (questId) => {
-      return get().questProgress[questId] || { status: 'locked', stars: 0, attempts: 0, hintsUsed: 0 };
-    },
+      clearQuest: (questId, stars, xp, coins) => {
+        set((s) => {
+          const prev = s.questProgress[questId] || { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
+          const newProgress = { ...s.questProgress };
+          newProgress[questId] = { ...prev, status: 'cleared' as const, stars: Math.max(prev.stars, stars) };
 
-    clearQuest: (questId, stars, xp, coins) => {
-      set((s) => {
-        const prev = s.questProgress[questId] || { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
-        const newProgress = { ...s.questProgress };
-        newProgress[questId] = { ...prev, status: 'cleared' as const, stars: Math.max(prev.stars, stars) };
-        
-        // Unlock next quest
-        const parts = questId.split('-');
-        const nextId = `${parts[0]}-${parseInt(parts[1]) + 1}`;
-        if (!newProgress[nextId] || newProgress[nextId].status === 'locked') {
-          newProgress[nextId] = { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
+          // Unlock next quest
+          const parts = questId.split('-');
+          const nextId = `${parts[0]}-${parseInt(parts[1]) + 1}`;
+          if (!newProgress[nextId] || newProgress[nextId].status === 'locked') {
+            newProgress[nextId] = { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
+          }
+
+          return { xp: s.xp + xp, coins: s.coins + coins, questProgress: newProgress };
+        });
+      },
+
+      useHint: (questId) => {
+        set((s) => {
+          const prev = s.questProgress[questId] || { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
+          const newProgress = { ...s.questProgress };
+          newProgress[questId] = { ...prev, hintsUsed: prev.hintsUsed + 1 };
+          return { questProgress: newProgress };
+        });
+      },
+
+      addAttempt: (questId) => {
+        set((s) => {
+          const prev = s.questProgress[questId] || { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
+          const newProgress = { ...s.questProgress };
+          newProgress[questId] = { ...prev, attempts: prev.attempts + 1 };
+          return { questProgress: newProgress };
+        });
+      },
+    }),
+    {
+      name: 'python-quest-save',
+      partialize: (state) => ({
+        xp: state.xp,
+        coins: state.coins,
+        questProgress: state.questProgress,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state._hydrated = true;
+          // Ensure quest 1-1 is always available
+          if (!state.questProgress['1-1']) {
+            state.questProgress['1-1'] = { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
+          }
         }
-        
-        return { xp: s.xp + xp, coins: s.coins + coins, questProgress: newProgress };
-      });
-      save();
-    },
-
-    useHint: (questId) => {
-      set((s) => {
-        const prev = s.questProgress[questId] || { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
-        const newProgress = { ...s.questProgress };
-        newProgress[questId] = { ...prev, hintsUsed: prev.hintsUsed + 1 };
-        return { questProgress: newProgress };
-      });
-      save();
-    },
-
-    addAttempt: (questId) => {
-      set((s) => {
-        const prev = s.questProgress[questId] || { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
-        const newProgress = { ...s.questProgress };
-        newProgress[questId] = { ...prev, attempts: prev.attempts + 1 };
-        return { questProgress: newProgress };
-      });
-      save();
-    },
-  };
-});
+      },
+    }
+  )
+);

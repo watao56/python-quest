@@ -30,12 +30,12 @@ export default function OutputPanel({ output, error, isRunning, hasRun }: Props)
           ) : !hasRun ? (
             <motion.div
               key="empty"
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center h-full gap-3"
             >
               <div className="text-5xl opacity-30 animate-bounce">🧩</div>
-              <p className="text-sm text-[#4a4a6a]">▶ 実行するとここに表示</p>
+              <p className="text-base text-[#4a4a6a]">▶ 実行するとここに表示</p>
             </motion.div>
           ) : error ? (
             <motion.div
@@ -44,8 +44,8 @@ export default function OutputPanel({ output, error, isRunning, hasRun }: Props)
               animate={{ opacity: 1, y: 0 }}
               className="bg-red-900/20 border border-red-800 rounded-lg p-4"
             >
-              <div className="text-red-400 text-sm font-bold mb-2">❌ エラー</div>
-              <pre className="text-red-300 text-sm whitespace-pre-wrap">{error}</pre>
+              <div className="text-red-400 text-base font-bold mb-2">❌ エラー</div>
+              <pre className="text-sm text-red-300 whitespace-pre-wrap">{error}</pre>
             </motion.div>
           ) : (
             <motion.div
@@ -54,7 +54,7 @@ export default function OutputPanel({ output, error, isRunning, hasRun }: Props)
               animate={{ opacity: 1, y: 0 }}
             >
               <div className="bg-[#12122a] rounded-lg p-4 border border-[#2a2a4a]">
-                <pre className="text-green-400 text-lg font-mono whitespace-pre-wrap">{output}</pre>
+                <pre className="text-lg text-green-400 font-mono whitespace-pre-wrap">{output}</pre>
               </div>
             </motion.div>
           )}

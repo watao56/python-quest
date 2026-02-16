@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { Blockly, getToolboxXml, generatePython } from '@/lib/blocklyConfig';
+import { Blockly, darkTheme, getToolboxXml, generatePython } from '@/lib/blocklyConfig';
 
 interface Props {
   availableBlocks: string[];
@@ -26,30 +26,25 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
 
     const workspace = Blockly.inject(containerRef.current, {
       toolbox: toolboxXml,
-      theme: Blockly.Themes.Classic,
+      theme: darkTheme,
       grid: { spacing: 20, length: 3, colour: '#1e1e3a', snap: true },
       zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 2, minScale: 0.5 },
       trashcan: true,
       renderer: 'zelos',
+      sounds: false,
     });
 
-    // Fix 3: Increase snap radius for easier block connections
+    // Increase snap radius for easier block connections
     (Blockly as any).config.snapRadius = 48;
     (Blockly as any).config.connectingSnapRadius = 68;
 
-    // Dark theme for workspace
-    const svg = containerRef.current.querySelector('.blocklySvg');
-    if (svg) {
-      (svg as SVGElement).style.backgroundColor = '#1a1a2e';
-    }
-
-    // Fix 2: Keep toolbox category open after dragging a block
+    // Keep toolbox category open after dragging a block
     workspace.addChangeListener((e: any) => {
       if (e.type === Blockly.Events.TOOLBOX_ITEM_SELECT) return;
       handleChange();
     });
 
-    // Fix 6: Prevent zoom from affecting flyout blocks
+    // Prevent zoom from affecting flyout blocks
     workspace.addChangeListener((e: any) => {
       if (e.type === Blockly.Events.VIEWPORT_CHANGE) {
         const flyout = workspace.getFlyout();
