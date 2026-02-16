@@ -21,7 +21,38 @@ body {
 }
 
 .blocklyTreeLabel {
-  color: #94a3b8 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Fix 1: Toolbox category buttons - dark theme */
+.blocklyToolboxCategory {
+  background-color: #1e1e3a !important;
+}
+
+.blocklyTreeRow {
+  background-color: transparent !important;
+  color: #e2e8f0 !important;
+}
+
+.blocklyTreeRow:hover {
+  background-color: #2a2a4a !important;
+}
+
+.blocklyTreeSelected {
+  background-color: #333366 !important;
+}
+
+.blocklyTreeRowContentContainer {
+  color: #e2e8f0 !important;
+}
+
+.blocklyToolboxContents {
+  background-color: #12122a !important;
+}
+
+/* Fix 4: Trashcan above Python code panel */
+.blocklyTrash {
+  z-index: 30 !important;
 }
 
 .blocklyFlyoutBackground {

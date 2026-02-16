@@ -33,13 +33,35 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       renderer: 'zelos',
     });
 
+    // Fix 3: Increase snap radius for easier block connections
+    (Blockly as any).config.snapRadius = 48;
+    (Blockly as any).config.connectingSnapRadius = 68;
+
     // Dark theme for workspace
     const svg = containerRef.current.querySelector('.blocklySvg');
     if (svg) {
       (svg as SVGElement).style.backgroundColor = '#1a1a2e';
     }
 
-    workspace.addChangeListener(handleChange);
+    // Fix 2: Keep toolbox category open after dragging a block
+    workspace.addChangeListener((e: any) => {
+      if (e.type === Blockly.Events.TOOLBOX_ITEM_SELECT) return;
+      handleChange();
+    });
+
+    // Fix 6: Prevent zoom from affecting flyout blocks
+    workspace.addChangeListener((e: any) => {
+      if (e.type === Blockly.Events.VIEWPORT_CHANGE) {
+        const flyout = workspace.getFlyout();
+        if (flyout) {
+          const flyoutWorkspace = flyout.getWorkspace();
+          if (flyoutWorkspace && flyoutWorkspace.scale !== 1) {
+            flyoutWorkspace.setScale(1);
+          }
+        }
+      }
+    });
+
     workspaceRef.current = workspace;
 
     return () => {
