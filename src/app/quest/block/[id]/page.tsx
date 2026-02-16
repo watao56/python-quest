@@ -1,0 +1,244 @@
+'use client';
+
+import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
+import { quests } from '@/data/quests';
+import { loadSkulpt, executePython } from '@/lib/pythonRunner';
+import { useGameStore } from '@/store/gameStore';
+import OutputPanel from '@/components/OutputPanel';
+import ClearModal from '@/components/ClearModal';
+import FailModal from '@/components/FailModal';
+import XpBar from '@/components/XpBar';
+
+const BlocklyEditor = dynamic(() => import('@/components/BlocklyEditor'), { ssr: false });
+
+export default function QuestPage() {
+  const params = useParams();
+  const router = useRouter();
+  const quest = quests.find((q) => q.id === params.id);
+  const { getQuestProgress, clearQuest, useHint, addAttempt } = useGameStore();
+
+  const [code, setCode] = useState('');
+  const [output, setOutput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [hasRun, setHasRun] = useState(false);
+  const [showClear, setShowClear] = useState(false);
+  const [showFail, setShowFail] = useState(false);
+  const [clearStars, setClearStars] = useState(0);
+  const [skulptReady, setSkulptReady] = useState(false);
+  const [hintIndex, setHintIndex] = useState(-1);
+
+  useEffect(() => {
+    loadSkulpt().then(setSkulptReady);
+  }, []);
+
+  const handleCodeChange = useCallback((newCode: string) => {
+    setCode(newCode);
+  }, []);
+
+  if (!quest) {
+    return (
+      <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center text-white">
+        <p>クエストが見つかりません</p>
+      </div>
+    );
+  }
+
+  const progress = getQuestProgress(quest.id);
+
+  const handleRun = async () => {
+    if (!skulptReady || isRunning) return;
+    setIsRunning(true);
+    setHasRun(true);
+    setError(null);
+    addAttempt(quest.id);
+
+    const result = await executePython(code);
+    setOutput(result.output);
+    setIsRunning(false);
+
+    if (!result.success) {
+      setError(result.error || 'エラーが発生しました');
+      return;
+    }
+
+    // Check answer
+    const normalize = (s: string) => s.replace(/\s+$/gm, '').trim();
+    if (normalize(result.output) === normalize(quest.expectedOutput)) {
+      // Calculate stars
+      const p = getQuestProgress(quest.id);
+      let stars = 1;
+      if (p.hintsUsed === 0) stars = 2;
+      if (p.hintsUsed === 0 && p.attempts <= 1) stars = 3;
+      setClearStars(stars);
+      clearQuest(quest.id, stars, quest.rewards.xp, quest.rewards.coins);
+      setShowClear(true);
+    } else {
+      setShowFail(true);
+    }
+  };
+
+  const handleHint = () => {
+    if (hintIndex < quest.hints.length - 1) {
+      setHintIndex((i) => i + 1);
+      useHint(quest.id);
+    }
+    setShowFail(false);
+  };
+
+  const nextQuestId = `1-${parseInt(quest.id.split('-')[1]) + 1}`;
+  const nextQuest = quests.find((q) => q.id === nextQuestId);
+
+  return (
+    <div className="min-h-screen bg-[#0a0a1a] text-white flex flex-col">
+      <XpBar />
+
+      <div className="flex-1 grid grid-cols-[280px_1fr_1fr] h-[calc(100vh-48px)]">
+        {/* Sidebar */}
+        <div className="bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] p-4 overflow-y-auto flex flex-col gap-3">
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-gradient-to-br from-[#1e1e3a] to-[#2a1a4a] rounded-xl p-4 border border-[#333366]"
+          >
+            <span className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-2">
+              🌱 W1 クエスト {quest.order}/3
+            </span>
+            <h2 className="text-lg font-bold">{quest.title}</h2>
+          </motion.div>
+
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-start gap-3 bg-[#1e1e3a] rounded-lg p-3 border border-[#2a2a4a]"
+          >
+            <div className="text-3xl flex-shrink-0" style={{ animation: 'float 4s ease-in-out infinite' }}>
+              {quest.npc.emoji}
+            </div>
+            <div>
+              <div className="text-xs text-purple-500 font-bold mb-1">{quest.npc.name}</div>
+              <div className="text-xs text-purple-200 leading-relaxed whitespace-pre-line">
+                {quest.npc.dialogue}
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-[#0a0a1a] border-2 border-yellow-500 rounded-lg p-3"
+            style={{ boxShadow: '0 0 12px rgba(245,158,11,0.08)' }}
+          >
+            <div className="text-xs text-yellow-500 font-bold mb-2">🎯 ミッション</div>
+            <div className="font-mono text-sm text-yellow-400 bg-[#1e1e2a] rounded-md p-2 border-l-3 border-yellow-500" style={{ borderLeftWidth: '3px' }}>
+              {quest.description}
+            </div>
+          </motion.div>
+
+          {hintIndex >= 0 && (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3"
+            >
+              <div className="text-xs text-yellow-500 font-bold mb-1">💡 ヒント {hintIndex + 1}</div>
+              <p className="text-xs text-yellow-200">{quest.hints[hintIndex]}</p>
+            </motion.div>
+          )}
+
+          <div className="flex gap-2 justify-center mt-auto">
+            <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
+              <div className="text-lg">✨</div>
+              <div className="text-xs text-yellow-400 font-bold">+{quest.rewards.xp} XP</div>
+            </div>
+            <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
+              <div className="text-lg">💰</div>
+              <div className="text-xs text-yellow-400 font-bold">+{quest.rewards.coins}</div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => router.push('/')}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors mt-2"
+          >
+            ← マップに戻る
+          </button>
+        </div>
+
+        {/* Blockly Editor */}
+        <div className="flex flex-col bg-[#1a1a2e]">
+          <div className="bg-[#12122a] px-4 py-2 flex justify-between items-center border-b-2 border-[#1e1e3a]">
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-yellow-500" />
+              🧩 ブロックエディタ
+            </div>
+            <button
+              onClick={handleRun}
+              disabled={!skulptReady || isRunning || !code.trim()}
+              className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-2 px-5 rounded-lg flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+              style={{ boxShadow: '0 0 12px rgba(34,197,94,0.3)' }}
+            >
+              ▶ 実行！
+            </button>
+          </div>
+          <div className="flex-1">
+            <BlocklyEditor availableBlocks={quest.availableBlocks} onCodeChange={handleCodeChange} />
+          </div>
+          {code && (
+            <div className="bg-[#0d0d1a] border-t border-[#1e1e3a] px-4 py-2">
+              <div className="text-xs text-slate-500 mb-1">🐍 生成されたPythonコード:</div>
+              <pre className="text-xs text-green-400 font-mono">{code}</pre>
+            </div>
+          )}
+        </div>
+
+        {/* Output */}
+        <OutputPanel output={output} error={error} isRunning={isRunning} hasRun={hasRun} />
+      </div>
+
+      <ClearModal
+        isOpen={showClear}
+        stars={clearStars}
+        xp={quest.rewards.xp}
+        coins={quest.rewards.coins}
+        questTitle={quest.title}
+        onNext={() => {
+          setShowClear(false);
+          if (nextQuest) {
+            router.push(`/quest/block/${nextQuestId}`);
+          } else {
+            router.push('/');
+          }
+        }}
+      />
+
+      <FailModal
+        isOpen={showFail}
+        expected={quest.expectedOutput}
+        actual={output}
+        onRetry={() => setShowFail(false)}
+        onHint={handleHint}
+      />
+
+      <style jsx global>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+        @keyframes confettiFall {
+          0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </div>
+  );
+}
