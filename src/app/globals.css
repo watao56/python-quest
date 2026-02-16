@@ -81,3 +81,44 @@ body {
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
+
+/* Issue #10: Code display flash animation */
+@keyframes codeFlash {
+  0% { background-color: #0d0d1a; }
+  50% { background-color: #1a1040; }
+  100% { background-color: #0d0d1a; }
+}
+.code-flash {
+  animation: codeFlash 0.4s ease-out;
+}
+.code-display-area {
+  pointer-events: auto;
+}
+
+/* Issue #13: Workspace initial guide */
+.blockly-workspace-container::before {
+  content: '🧩 ← ツールボックスからブロックをドラッグしてここに置こう！';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #3a3a5a;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+.blockly-workspace-container {
+  position: relative;
+}
+.blockly-workspace-container.has-blocks::before {
+  display: none;
+}
+
+/* Issue #13: Mobile min height */
+@media (max-width: 768px) {
+  .blockly-workspace-container {
+    min-height: 500px !important;
+  }
+}

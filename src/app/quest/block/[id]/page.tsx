@@ -11,6 +11,7 @@ import OutputPanel from '@/components/OutputPanel';
 import ClearModal from '@/components/ClearModal';
 import FailModal from '@/components/FailModal';
 import XpBar from '@/components/XpBar';
+import Tutorial from '@/components/Tutorial';
 
 const BlocklyEditor = dynamic(() => import('@/components/BlocklyEditor'), { ssr: false });
 
@@ -42,6 +43,8 @@ export default function QuestPage() {
   const [skulptReady, setSkulptReady] = useState(false);
   const [hintIndex, setHintIndex] = useState(-1);
   const [showMissionIntro, setShowMissionIntro] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'editor' | 'info' | 'output'>('editor');
 
   useEffect(() => {
@@ -193,13 +196,29 @@ export default function QuestPage() {
         ))}
       </div>
 
-      {/* Desktop: 3-column layout / Tablet: 2-column / Mobile: tab switching */}
-      <div className="flex-1 flex flex-col md:grid md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_1fr] h-[calc(100vh-48px)]">
-        {/* Sidebar - hidden on mobile unless info tab */}
-        <div className={`bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] ${
+      {/* Desktop: 3-column layout / Tablet: collapsible sidebar / Mobile: tab switching */}
+      <div className={`flex-1 flex flex-col md:grid ${sidebarCollapsed ? 'md:grid-cols-[48px_1fr] lg:grid-cols-[48px_1fr_1fr]' : 'md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_1fr]'} h-[calc(100vh-48px)] transition-all`}>
+        {/* Sidebar - hidden on mobile unless info tab, collapsible on tablet */}
+        <div className={`bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] relative ${
           activeTab === 'info' ? 'flex flex-col' : 'hidden'
         } md:flex md:flex-col overflow-y-auto`}>
-          {sidebarContent}
+          {/* Toggle button (tablet+) */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="hidden md:flex absolute top-2 right-[-14px] z-20 w-7 h-7 bg-[#2a1a4a] border border-purple-500 rounded-full items-center justify-center text-xs text-purple-300 hover:bg-purple-600 transition-colors"
+          >
+            {sidebarCollapsed ? '→' : '←'}
+          </button>
+          {sidebarCollapsed ? (
+            <div className="hidden md:flex flex-col items-center gap-3 py-4">
+              <span className="text-lg">📋</span>
+              <span className="text-lg">🎯</span>
+              <span className="text-lg">💡</span>
+              <button onClick={() => router.push('/')} className="text-lg mt-auto mb-4">🏠</button>
+            </div>
+          ) : (
+            sidebarContent
+          )}
         </div>
 
         {/* Blockly Editor */}
@@ -212,6 +231,7 @@ export default function QuestPage() {
               🧩 ブロックエディタ
             </div>
             <button
+              data-tutorial-run
               onClick={handleRun}
               disabled={!skulptReady || isRunning || !code.trim()}
               className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-2 px-5 rounded-lg flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100"
@@ -223,12 +243,14 @@ export default function QuestPage() {
           <div className="flex-1 min-h-[400px]">
             <BlocklyEditor availableBlocks={quest.availableBlocks} onCodeChange={handleCodeChange} />
           </div>
-          {code && (
-            <div className="bg-[#0d0d1a] border-t border-[#1e1e3a] px-4 py-2 relative z-10 pointer-events-none">
-              <div className="text-sm text-slate-500 mb-1">🐍 生成されたPythonコード:</div>
-              <pre className="text-sm text-green-400 font-mono">{code}</pre>
-            </div>
-          )}
+          <div className={`bg-[#0d0d1a] border-t-2 border-[#1e1e3a] px-4 py-2 relative z-10 code-display-area ${code ? 'code-flash' : ''}`} style={{ minHeight: '80px', maxHeight: '140px', overflowY: 'auto' }}>
+            <div className="text-sm font-bold text-purple-400 mb-1">🐍 Pythonコード</div>
+            {code ? (
+              <pre className="text-sm text-green-400 font-mono select-text cursor-text">{code}</pre>
+            ) : (
+              <pre className="text-sm text-slate-600 font-mono italic">{'# 🐍 ブロックを組み立てるとPythonコードが表示されるよ！'}</pre>
+            )}
+          </div>
         </div>
 
         {/* Output - visible as third column on lg, tab on mobile */}
@@ -288,7 +310,7 @@ export default function QuestPage() {
                 transition={{ delay: 0.8 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setShowMissionIntro(false)}
+                onClick={() => { setShowMissionIntro(false); setShowTutorial(true); }}
                 className="bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-3 px-8 rounded-xl text-lg"
                 style={{ boxShadow: '0 0 20px rgba(124,58,237,0.4)' }}
               >
@@ -298,6 +320,10 @@ export default function QuestPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showTutorial && (
+        <Tutorial questId={quest.id} onComplete={() => setShowTutorial(false)} />
+      )}
 
       <ClearModal
         isOpen={showClear}

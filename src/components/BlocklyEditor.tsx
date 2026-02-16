@@ -16,6 +16,13 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
     if (workspaceRef.current) {
       const code = generatePython(workspaceRef.current);
       onCodeChange(code);
+
+      // Issue #13: hide workspace guide when blocks exist
+      const el = containerRef.current;
+      if (el) {
+        const hasBlocks = workspaceRef.current.getAllBlocks(false).length > 0;
+        el.classList.toggle('has-blocks', hasBlocks);
+      }
     }
   }, [onCodeChange]);
 
@@ -27,11 +34,11 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
     const workspace = Blockly.inject(containerRef.current, {
       toolbox: toolboxXml,
       theme: darkTheme,
-      grid: { spacing: 20, length: 3, colour: '#1e1e3a', snap: true },
+      grid: { spacing: 20, length: 3, colour: '#2a2a4a', snap: true },
       zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 2, minScale: 0.5 },
       trashcan: true,
       renderer: 'zelos',
-      sounds: false,
+      sounds: true,
     });
 
     // Increase snap radius for easier block connections
@@ -68,6 +75,7 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
   return (
     <div
       ref={containerRef}
+      className="blockly-workspace-container"
       style={{ width: '100%', height: '100%', minHeight: '400px' }}
     />
   );

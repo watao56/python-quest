@@ -1,3 +1,5 @@
+import { translateError } from './errorMessages';
+
 declare global {
   interface Window {
     Sk: any;
@@ -60,20 +62,4 @@ export async function executePython(code: string): Promise<ExecutionResult> {
   }
 }
 
-function translateError(msg: string): string {
-  if (msg.includes('TimeLimitError') || msg.includes('time limit')) {
-    return 'プログラムの実行に時間がかかりすぎたよ！\nくり返しが止まらなくなっていないかな？';
-  }
-  if (msg.includes('SyntaxError')) {
-    return 'コードの書き方がちょっとちがうみたい。\nブロックを確認してみてね！';
-  }
-  if (msg.includes('NameError')) {
-    const match = msg.match(/name '(.+?)' is not defined/);
-    if (match) return `「${match[1]}」が見つからないよ。スペルミスかな？`;
-    return '使おうとしている名前が見つからないよ！';
-  }
-  if (msg.includes('TypeError')) {
-    return '数字と文字を間違えているかも！';
-  }
-  return `エラーが出たよ: ${msg}`;
-}
+// Error translation moved to errorMessages.ts
