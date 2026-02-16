@@ -205,7 +205,7 @@ export default function QuestPage() {
           {/* Toggle button (tablet+) */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden md:flex absolute top-2 right-[-14px] z-20 w-7 h-7 bg-[#2a1a4a] border border-purple-500 rounded-full items-center justify-center text-xs text-purple-300 hover:bg-purple-600 transition-colors"
+            className="hidden md:flex absolute top-2 right-[-14px] z-[60] w-7 h-7 bg-[#2a1a4a] border border-purple-500 rounded-full items-center justify-center text-xs text-purple-300 hover:bg-purple-600 transition-colors shadow-lg"
           >
             {sidebarCollapsed ? '→' : '←'}
           </button>

@@ -116,6 +116,15 @@ body {
   display: none;
 }
 
+/* Fix: Limit flyout width */
+.blocklyFlyout {
+  max-width: 200px !important;
+  width: 200px !important;
+}
+.blocklyFlyoutScrollbar {
+  display: none !important;
+}
+
 /* Issue #13: Mobile min height */
 @media (max-width: 768px) {
   .blockly-workspace-container {

@@ -37,9 +37,17 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       grid: { spacing: 20, length: 3, colour: '#2a2a4a', snap: true },
       zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 2, minScale: 0.5 },
       trashcan: true,
+      flyoutAutoClose: true,
       renderer: 'zelos',
       sounds: true,
     });
+
+    // Limit flyout width
+    const flyout = workspace.getFlyout();
+    if (flyout) {
+      (flyout as any).width_ = 200;
+      (flyout as any).DEFAULT_WIDTH = 200;
+    }
 
     // Increase snap radius for easier block connections
     (Blockly as any).config.snapRadius = 48;
