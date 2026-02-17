@@ -177,9 +177,10 @@ export default function QuestPage() {
       {/* Desktop: 3-column / Tablet: collapsible sidebar / Mobile: tab switching */}
       <div className={`flex-1 flex flex-col md:grid ${sidebarCollapsed ? 'md:grid-cols-[48px_1fr] lg:grid-cols-[48px_1fr_1fr]' : 'md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_1fr]'} h-[calc(100vh-80px)] transition-all`}>
         {/* Sidebar */}
-        <div className={`bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] relative ${
+        <div className={`relative ${
           activeTab === 'info' ? 'flex flex-col' : 'hidden'
-        } md:flex md:flex-col overflow-y-auto overflow-x-visible`}>
+        } md:flex md:flex-col`}>
+          {/* Collapse button - positioned outside the scrollable area */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="hidden md:flex absolute top-2 z-[60] w-7 h-7 bg-[#2a1a4a] border border-purple-500 rounded-full items-center justify-center text-xs text-purple-300 hover:bg-purple-600 transition-colors shadow-lg"
@@ -187,6 +188,7 @@ export default function QuestPage() {
           >
             {sidebarCollapsed ? '→' : '←'}
           </button>
+          <div className="flex-1 bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] overflow-y-auto">
           {sidebarCollapsed ? (
             <div className="hidden md:flex flex-col items-center gap-3 py-4">
               <span className="text-lg">📋</span>
@@ -196,7 +198,8 @@ export default function QuestPage() {
           ) : (
             <QuestSidebar quest={quest} hintIndex={hintIndex} />
           )}
-        </div>
+          </div>{/* close inner scrollable div */}
+        </div>{/* close outer sidebar wrapper */}
 
         {/* Blockly Editor */}
         <div className={`flex flex-col bg-[#1a1a2e] ${

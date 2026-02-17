@@ -187,9 +187,6 @@ body {
 }
 
 /* Fix #36: Flyout blocks should not be affected by workspace zoom */
-.blocklyFlyout .blocklyWorkspace {
-  transform: scale(1) !important;
-}
 
 /* Issue #13: Mobile min height */
 @media (max-width: 768px) {

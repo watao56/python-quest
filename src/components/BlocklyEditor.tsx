@@ -65,14 +65,33 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
     });
 
     // Fix #36: Prevent zoom from affecting flyout blocks
-    // Monkey-patch the flyout workspace to always use scale=1
+    // Use MutationObserver to reset flyout SVG transform when zoom changes
+    const flyoutSvg = containerRef.current?.querySelector('.blocklyFlyout');
+    let flyoutObserver: MutationObserver | null = null;
+    if (flyoutSvg) {
+      const blockCanvas = flyoutSvg.querySelector('.blocklyBlockCanvas');
+      if (blockCanvas) {
+        flyoutObserver = new MutationObserver(() => {
+          const transform = blockCanvas.getAttribute('transform');
+          if (transform) {
+            // Extract translate but force scale to 1
+            const match = transform.match(/translate\(([^)]+)\)/);
+            if (match && transform.includes('scale')) {
+              blockCanvas.setAttribute('transform', `translate(${match[1]}) scale(1)`);
+            }
+          }
+        });
+        flyoutObserver.observe(blockCanvas, { attributes: true, attributeFilter: ['transform'] });
+      }
+    }
+    // Also patch flyout workspace scale
     const flyoutWs = flyout?.getWorkspace();
     if (flyoutWs) {
-      const origSetScale = flyoutWs.setScale.bind(flyoutWs);
-      flyoutWs.setScale = (newScale: number) => {
-        // Always force scale to 1 regardless of main workspace zoom
-        origSetScale(1);
-      };
+      Object.defineProperty(flyoutWs, 'scale', {
+        get() { return 1; },
+        set() { /* noop — always 1 */ },
+        configurable: true,
+      });
     }
 
     workspaceRef.current = workspace;
@@ -94,6 +113,7 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
     window.addEventListener('resize', handleWindowResize);
 
     return () => {
+      flyoutObserver?.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleWindowResize);
       workspace.dispose();
