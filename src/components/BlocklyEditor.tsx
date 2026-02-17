@@ -39,7 +39,7 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       toolbox: toolboxXml,
       theme: darkTheme,
       grid: { spacing: 20, length: 3, colour: '#2a2a4a', snap: true },
-      zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 2, minScale: 0.5 },
+      zoom: { controls: true, wheel: true, startScale: 0.7, maxScale: 2, minScale: 0.3 },
       trashcan: true,
       // @ts-expect-error flyoutAutoClose is valid but not in type definitions
       flyoutAutoClose: true,
@@ -65,7 +65,7 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
     });
 
     // Fix #36: Flyout blocks at fixed smaller scale (independent of workspace zoom)
-    const FLYOUT_SCALE = 0.5;
+    const FLYOUT_SCALE = 0.7;
     const flyoutSvg = containerRef.current?.querySelector('.blocklyFlyout');
     let flyoutObserver: MutationObserver | null = null;
     if (flyoutSvg) {
