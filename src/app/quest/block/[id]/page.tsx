@@ -179,10 +179,11 @@ export default function QuestPage() {
         {/* Sidebar */}
         <div className={`bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] relative ${
           activeTab === 'info' ? 'flex flex-col' : 'hidden'
-        } md:flex md:flex-col overflow-y-auto`}>
+        } md:flex md:flex-col overflow-y-auto overflow-x-visible`}>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden md:flex absolute top-2 right-[-14px] z-[60] w-7 h-7 bg-[#2a1a4a] border border-purple-500 rounded-full items-center justify-center text-xs text-purple-300 hover:bg-purple-600 transition-colors shadow-lg"
+            className="hidden md:flex absolute top-2 z-[60] w-7 h-7 bg-[#2a1a4a] border border-purple-500 rounded-full items-center justify-center text-xs text-purple-300 hover:bg-purple-600 transition-colors shadow-lg"
+            style={{ right: '-14px' }}
           >
             {sidebarCollapsed ? '→' : '←'}
           </button>

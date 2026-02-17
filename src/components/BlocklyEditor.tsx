@@ -65,22 +65,15 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
     });
 
     // Fix #36: Prevent zoom from affecting flyout blocks
-    // Reset flyout scale on any viewport change
-    workspace.addChangeListener((e: any) => {
-      if (e.type === Blockly.Events.VIEWPORT_CHANGE) {
-        const ws = workspaceRef.current;
-        if (!ws) return;
-        const f = ws.getFlyout();
-        if (f) {
-          const fw = f.getWorkspace();
-          if (fw && fw.scale !== 1) {
-            fw.setScale(1);
-            // Force re-render of flyout contents at scale 1
-            try { f.reflow(); } catch { /* ignore if not available */ }
-          }
-        }
-      }
-    });
+    // Monkey-patch the flyout workspace to always use scale=1
+    const flyoutWs = flyout?.getWorkspace();
+    if (flyoutWs) {
+      const origSetScale = flyoutWs.setScale.bind(flyoutWs);
+      flyoutWs.setScale = (newScale: number) => {
+        // Always force scale to 1 regardless of main workspace zoom
+        origSetScale(1);
+      };
+    }
 
     workspaceRef.current = workspace;
 
