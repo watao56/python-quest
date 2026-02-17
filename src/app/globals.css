@@ -3,12 +3,48 @@
 :root {
   --bg-primary: #0a0a1a;
   --bg-secondary: #12122a;
+  --bg-tertiary: #1e1e3a;
+  --bg-hero: #1a1040;
   --border: #1e1e3a;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+}
+
+/* #27: Light theme */
+.light-theme {
+  --bg-primary: #f8f9fc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e2e8f0;
+  --bg-hero: #ede9fe;
+  --border: #d1d5db;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+}
+
+.light-theme body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.light-theme .blocklySvg {
+  background-color: #f0f0f8 !important;
+}
+
+.light-theme .blocklyToolboxDiv {
+  background-color: #ffffff !important;
+}
+
+.light-theme .blocklyTreeLabel {
+  color: #1e293b !important;
+}
+
+.light-theme .blocklyFlyoutBackground {
+  fill: #ffffff !important;
 }
 
 body {
   background: var(--bg-primary);
-  color: #e2e8f0;
+  color: var(--text-primary);
 }
 
 /* Blockly overrides */

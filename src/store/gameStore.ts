@@ -25,6 +25,8 @@ interface GameState {
   xp: number;
   coins: number;
   questProgress: Record<string, QuestProgress>;
+  purchasedItems: string[];
+  theme: 'dark' | 'light';
   _hydrated: boolean;
   getLevel: () => { level: number; title: string; currentXp: number; nextXp: number };
   addXp: (amount: number) => void;
@@ -33,6 +35,8 @@ interface GameState {
   clearQuest: (questId: string, stars: number, xp: number, coins: number) => void;
   useHint: (questId: string) => void;
   addAttempt: (questId: string) => void;
+  purchaseItem: (itemId: string) => void;
+  setTheme: (theme: 'dark' | 'light') => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -41,6 +45,8 @@ export const useGameStore = create<GameState>()(
       xp: 0,
       coins: 0,
       questProgress: { '1-1': { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 } },
+      purchasedItems: [],
+      theme: 'dark',
       _hydrated: false,
 
       getLevel: () => {
@@ -90,6 +96,14 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      purchaseItem: (itemId) => {
+        set((s) => ({
+          purchasedItems: s.purchasedItems.includes(itemId) ? s.purchasedItems : [...s.purchasedItems, itemId],
+        }));
+      },
+
+      setTheme: (theme) => set({ theme }),
+
       addAttempt: (questId) => {
         set((s) => {
           const prev = s.questProgress[questId] || { status: 'available', stars: 0, attempts: 0, hintsUsed: 0 };
@@ -105,6 +119,8 @@ export const useGameStore = create<GameState>()(
         xp: state.xp,
         coins: state.coins,
         questProgress: state.questProgress,
+        purchasedItems: state.purchasedItems,
+        theme: state.theme,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

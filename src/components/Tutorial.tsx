@@ -3,34 +3,29 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const STEPS = [
-  {
-    title: 'ツールボックスからブロックを選ぼう',
-    desc: '左のパネルからカテゴリをクリックして、使いたいブロックを見つけよう！',
-    emoji: '🧰',
-    highlight: '.blocklyToolboxDiv',
-  },
-  {
-    title: 'ブロックをドラッグしてワークスペースに置こう',
-    desc: 'ブロックをクリックしたまま、右のエリアにドラッグして離そう！',
-    emoji: '✋',
-    highlight: '.blocklySvg',
-  },
-  {
-    title: 'ブロック同士をつなげよう',
-    desc: 'ブロックの凸凹を合わせると、パチッとつながるよ！',
-    emoji: '🧩',
-    highlight: '.blocklySvg',
-  },
-  {
-    title: '▶ 実行ボタンを押そう',
-    desc: 'ブロックを組み立てたら、実行ボタンを押してプログラムを動かそう！',
-    emoji: '🚀',
-    highlight: '[data-tutorial-run]',
-  },
-];
+// #23: Concept-specific mini tutorials per quest
+const QUEST_TUTORIALS: Record<string, Array<{ title: string; desc: string; emoji: string }>> = {
+  '1-1': [
+    { title: 'ツールボックスからブロックを選ぼう', desc: '左のパネルからカテゴリをクリックして、使いたいブロックを見つけよう！', emoji: '🧰' },
+    { title: 'ブロックをドラッグしてワークスペースに置こう', desc: 'ブロックをクリックしたまま、右のエリアにドラッグして離そう！', emoji: '✋' },
+    { title: 'ブロック同士をつなげよう', desc: 'ブロックの凸凹を合わせると、パチッとつながるよ！', emoji: '🧩' },
+    { title: '▶ 実行ボタンを押そう', desc: 'ブロックを組み立てたら、実行ボタンを押してプログラムを動かそう！', emoji: '🚀' },
+  ],
+  '1-3': [
+    { title: '文字の結合って？', desc: '「つなげる」ブロックを使うと、2つの文字をくっつけて1つにできるよ！', emoji: '🔗' },
+    { title: '結合ブロックの使い方', desc: '左と右に文字ブロックを入れて、printの中に入れよう！', emoji: '📝' },
+  ],
+  '1-5': [
+    { title: '計算ブロックって？', desc: '「🔢 計算」カテゴリには、足し算・引き算・かけ算・割り算ができるブロックがあるよ！', emoji: '🔢' },
+    { title: '計算結果を表示しよう', desc: '計算ブロックをprintブロックの中に入れると、答えが表示されるよ！', emoji: '📺' },
+  ],
+  '1-7': [
+    { title: '変数ってなに？', desc: '変数は「データを入れる箱」のようなもの。名前をつけて、中に値を入れられるよ！', emoji: '📦' },
+    { title: '変数をセットしよう', desc: '「変数をセット」ブロックで箱に値を入れて、「変数を取得」ブロックで中身を取り出そう！', emoji: '✏️' },
+  ],
+};
 
-const STORAGE_KEY = 'pythonquest_tutorial_done';
+const STORAGE_KEY_PREFIX = 'pythonquest_tutorial_';
 
 interface Props {
   questId: string;
@@ -38,49 +33,34 @@ interface Props {
 }
 
 export default function Tutorial({ questId, onComplete }: Props) {
+  const steps = QUEST_TUTORIALS[questId];
   const [step, setStep] = useState(0);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (questId !== '1-1') return;
-    if (localStorage.getItem(STORAGE_KEY)) return;
+    if (!steps) return;
+    const key = STORAGE_KEY_PREFIX + questId;
+    if (localStorage.getItem(key)) return;
     setVisible(true);
-  }, [questId]);
+  }, [questId, steps]);
+
+  if (!steps || !visible) return null;
 
   const finish = () => {
-    localStorage.setItem(STORAGE_KEY, '1');
+    localStorage.setItem(STORAGE_KEY_PREFIX + questId, '1');
     setVisible(false);
     onComplete();
   };
 
   const next = () => {
-    if (step >= STEPS.length - 1) {
+    if (step >= steps.length - 1) {
       finish();
     } else {
       setStep(step + 1);
     }
   };
 
-  useEffect(() => {
-    if (!visible) return;
-    // Highlight the target element
-    const sel = STEPS[step]?.highlight;
-    if (!sel) return;
-    const el = document.querySelector(sel) as HTMLElement;
-    if (el) {
-      el.style.position = el.style.position || 'relative';
-      el.style.zIndex = '10001';
-      el.style.pointerEvents = 'none';
-      return () => {
-        el.style.zIndex = '';
-        el.style.pointerEvents = '';
-      };
-    }
-  }, [visible, step]);
-
-  if (!visible) return null;
-
-  const current = STEPS[step];
+  const current = steps[step];
 
   return (
     <AnimatePresence>
@@ -90,10 +70,7 @@ export default function Tutorial({ questId, onComplete }: Props) {
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[10000] flex items-center justify-center"
       >
-        {/* Overlay */}
         <div className="absolute inset-0 bg-black/70" />
-
-        {/* Card */}
         <motion.div
           key={step}
           initial={{ scale: 0.9, opacity: 0 }}
@@ -101,9 +78,8 @@ export default function Tutorial({ questId, onComplete }: Props) {
           className="relative z-10 bg-gradient-to-br from-[#1e1e3a] to-[#2a1a4a] border-2 border-purple-500 rounded-2xl p-6 max-w-md w-full mx-4 text-center"
           style={{ boxShadow: '0 0 40px rgba(124,58,237,0.3)' }}
         >
-          {/* Step indicator */}
           <div className="flex justify-center gap-2 mb-4">
-            {STEPS.map((_, i) => (
+            {steps.map((_, i) => (
               <div
                 key={i}
                 className={`w-3 h-3 rounded-full transition-colors ${
@@ -112,13 +88,11 @@ export default function Tutorial({ questId, onComplete }: Props) {
               />
             ))}
           </div>
-
           <div className="text-5xl mb-3">{current.emoji}</div>
           <h3 className="text-lg font-bold text-purple-200 mb-2">
-            ステップ {step + 1}: {current.title}
+            {current.title}
           </h3>
           <p className="text-slate-300 text-sm mb-6">{current.desc}</p>
-
           <div className="flex gap-3 justify-center">
             <button
               onClick={finish}
@@ -130,7 +104,7 @@ export default function Tutorial({ questId, onComplete }: Props) {
               onClick={next}
               className="bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-2 px-6 rounded-xl hover:scale-105 transition-transform"
             >
-              {step >= STEPS.length - 1 ? '🎉 はじめよう！' : '次へ →'}
+              {step >= steps.length - 1 ? '🎉 はじめよう！' : '次へ →'}
             </button>
           </div>
         </motion.div>

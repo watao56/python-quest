@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { Blockly, darkTheme, getToolboxXml, generatePython } from '@/lib/blocklyConfig';
 
 interface Props {
@@ -12,17 +12,22 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
   const containerRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
 
+  // #31: Debounced change handler to avoid excessive re-renders
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleChange = useCallback(() => {
-    if (workspaceRef.current) {
-      const code = generatePython(workspaceRef.current);
-      onCodeChange(code);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      if (workspaceRef.current) {
+        const code = generatePython(workspaceRef.current);
+        onCodeChange(code);
 
-      const el = containerRef.current;
-      if (el) {
-        const hasBlocks = workspaceRef.current.getAllBlocks(false).length > 0;
-        el.classList.toggle('has-blocks', hasBlocks);
+        const el = containerRef.current;
+        if (el) {
+          const hasBlocks = workspaceRef.current.getAllBlocks(false).length > 0;
+          el.classList.toggle('has-blocks', hasBlocks);
+        }
       }
-    }
+    }, 150);
   }, [onCodeChange]);
 
   useEffect(() => {

@@ -1,5 +1,14 @@
 import type { Metadata } from 'next';
+import { Press_Start_2P } from 'next/font/google';
 import './globals.css';
+
+// #29: next/font migration
+const pressStart2P = Press_Start_2P({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-pixel',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Python Quest - コードを書いて、世界を冒険しよう！',
@@ -12,13 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="ja" className={pressStart2P.variable}>
       <body className="bg-[#0a0a1a] text-white antialiased text-base">{children}</body>
     </html>
   );

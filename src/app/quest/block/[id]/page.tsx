@@ -1,8 +1,8 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { quests } from '@/data/quests';
 import { loadSkulpt, executePython } from '@/lib/pythonRunner';
@@ -12,17 +12,19 @@ import ClearModal from '@/components/ClearModal';
 import FailModal from '@/components/FailModal';
 import XpBar from '@/components/XpBar';
 import Tutorial from '@/components/Tutorial';
+import QuestSidebar from '@/components/QuestSidebar';
+import MissionIntroModal from '@/components/MissionIntroModal';
+import HintPanel from '@/components/HintPanel';
+import LevelUpModal from '@/components/LevelUpModal';
 
 const BlocklyEditor = dynamic(() => import('@/components/BlocklyEditor'), { ssr: false });
 
-/** Normalize for answer comparison: full-width/half-width, trim whitespace */
+/** Normalize for answer comparison */
 function normalizeOutput(s: string): string {
   return s
     .replace(/\s+$/gm, '')
     .trim()
-    // full-width alphanumeric → half-width
     .replace(/[\uff01-\uff5e]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
-    // full-width space → half-width
     .replace(/\u3000/g, ' ');
 }
 
@@ -30,7 +32,7 @@ export default function QuestPage() {
   const params = useParams();
   const router = useRouter();
   const quest = quests.find((q) => q.id === params.id);
-  const { getQuestProgress, clearQuest, useHint, addAttempt } = useGameStore();
+  const { getQuestProgress, clearQuest, useHint, addAttempt, getLevel } = useGameStore();
 
   const [code, setCode] = useState('');
   const [output, setOutput] = useState('');
@@ -46,6 +48,9 @@ export default function QuestPage() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'editor' | 'info' | 'output'>('editor');
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [levelUpInfo, setLevelUpInfo] = useState({ level: 0, title: '' });
+  const prevLevelRef = useRef(getLevel().level);
 
   useEffect(() => {
     loadSkulpt().then(setSkulptReady);
@@ -53,7 +58,6 @@ export default function QuestPage() {
 
   // Fix #34: Trigger Blockly resize when sidebar collapses/expands
   useEffect(() => {
-    // Small delay to let CSS transition complete
     const timer = setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
     }, 350);
@@ -85,7 +89,6 @@ export default function QuestPage() {
   }
 
   const progress = getQuestProgress(quest.id);
-  const totalQuests = quests.filter((q) => q.worldId === quest.worldId).length;
 
   const handleRun = async () => {
     if (!skulptReady || isRunning) return;
@@ -110,7 +113,15 @@ export default function QuestPage() {
       if (p.hintsUsed === 0) stars = 2;
       if (p.hintsUsed === 0 && p.attempts <= 1) stars = 3;
       setClearStars(stars);
+      const prevLevel = prevLevelRef.current;
       clearQuest(quest.id, stars, quest.rewards.xp, quest.rewards.coins);
+      // Check for level up (#28)
+      const newLevelInfo = useGameStore.getState().getLevel();
+      if (newLevelInfo.level > prevLevel) {
+        setLevelUpInfo({ level: newLevelInfo.level, title: newLevelInfo.title });
+        setTimeout(() => setShowLevelUp(true), 3500);
+      }
+      prevLevelRef.current = newLevelInfo.level;
       setActiveTab('output');
       setTimeout(() => setShowClear(true), 2500);
     } else {
@@ -130,77 +141,23 @@ export default function QuestPage() {
   const nextQuestId = `1-${parseInt(quest.id.split('-')[1]) + 1}`;
   const nextQuest = quests.find((q) => q.id === nextQuestId);
 
-  const sidebarContent = (
-    <div className="flex flex-col gap-3 p-4 overflow-y-auto h-full">
-      <motion.div
-        initial={false}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-gradient-to-br from-[#1e1e3a] to-[#2a1a4a] rounded-xl p-4 border border-[#333366]"
-      >
-        <span className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-sm font-bold px-3 py-1 rounded-full mb-2">
-          🌱 W1 クエスト {quest.order}/{totalQuests}
-        </span>
-        <h2 className="text-lg font-bold">{quest.title}</h2>
-      </motion.div>
-
-      <div className="flex items-start gap-3 bg-[#1e1e3a] rounded-lg p-3 border border-[#2a2a4a]">
-        <div className="text-3xl flex-shrink-0" style={{ animation: 'float 4s ease-in-out infinite' }}>
-          {quest.npc.emoji}
-        </div>
-        <div>
-          <div className="text-sm text-purple-500 font-bold mb-1">{quest.npc.name}</div>
-          <div className="text-sm text-purple-200 leading-relaxed whitespace-pre-line">
-            {quest.npc.dialogue}
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="bg-[#0a0a1a] border-2 border-yellow-500 rounded-lg p-3"
-        style={{ boxShadow: '0 0 12px rgba(245,158,11,0.08)' }}
-      >
-        <div className="text-sm text-yellow-500 font-bold mb-2">🎯 ミッション</div>
-        <div className="font-mono text-base text-yellow-400 bg-[#1e1e2a] rounded-md p-2 border-l-[3px] border-yellow-500">
-          {quest.description}
-        </div>
-      </div>
-
-      {hintIndex >= 0 && (
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3"
-        >
-          <div className="text-sm text-yellow-500 font-bold mb-1">💡 ヒント {hintIndex + 1}</div>
-          <p className="text-sm text-yellow-200">{quest.hints[hintIndex]}</p>
-        </motion.div>
-      )}
-
-      <div className="flex gap-2 justify-center mt-auto">
-        <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
-          <div className="text-lg">✨</div>
-          <div className="text-sm text-yellow-400 font-bold">+{quest.rewards.xp} XP</div>
-        </div>
-        <div className="bg-[#1e1e3a] rounded-lg px-4 py-2 text-center border border-[#2a2a4a]">
-          <div className="text-lg">💰</div>
-          <div className="text-sm text-yellow-400 font-bold">+{quest.rewards.coins}</div>
-        </div>
-      </div>
-
-      <button
-        onClick={() => router.push('/')}
-        className="text-sm text-slate-400 hover:text-slate-200 transition-colors mt-2"
-      >
-        ← マップに戻る
-      </button>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white flex flex-col">
-      <XpBar />
+      {/* #25: Header with back button */}
+      <div className="flex items-center bg-[#12122a] border-b-2 border-[#1e1e3a] px-3 py-1.5 gap-2">
+        <button
+          onClick={() => router.push('/')}
+          className="text-slate-400 hover:text-white transition-colors text-sm flex items-center gap-1 flex-shrink-0"
+          aria-label="マップに戻る"
+        >
+          ← 戻る
+        </button>
+        <div className="flex-1 min-w-0">
+          <XpBar compact />
+        </div>
+      </div>
 
-      {/* Mobile tabs */}
+      {/* #22: Mobile tabs */}
       <div className="md:hidden flex bg-[#12122a] border-b-2 border-[#1e1e3a]">
         {(['info', 'editor', 'output'] as const).map((tab) => (
           <button
@@ -217,13 +174,12 @@ export default function QuestPage() {
         ))}
       </div>
 
-      {/* Desktop: 3-column layout / Tablet: collapsible sidebar / Mobile: tab switching */}
-      <div className={`flex-1 flex flex-col md:grid ${sidebarCollapsed ? 'md:grid-cols-[48px_1fr] lg:grid-cols-[48px_1fr_1fr]' : 'md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_1fr]'} h-[calc(100vh-48px)] transition-all`}>
-        {/* Sidebar - hidden on mobile unless info tab, collapsible on tablet */}
+      {/* Desktop: 3-column / Tablet: collapsible sidebar / Mobile: tab switching */}
+      <div className={`flex-1 flex flex-col md:grid ${sidebarCollapsed ? 'md:grid-cols-[48px_1fr] lg:grid-cols-[48px_1fr_1fr]' : 'md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_1fr]'} h-[calc(100vh-80px)] transition-all`}>
+        {/* Sidebar */}
         <div className={`bg-gradient-to-b from-[#12122a] to-[#0a0a1a] border-r-2 border-[#1e1e3a] relative ${
           activeTab === 'info' ? 'flex flex-col' : 'hidden'
         } md:flex md:flex-col overflow-y-auto`}>
-          {/* Toggle button (tablet+) */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="hidden md:flex absolute top-2 right-[-14px] z-[60] w-7 h-7 bg-[#2a1a4a] border border-purple-500 rounded-full items-center justify-center text-xs text-purple-300 hover:bg-purple-600 transition-colors shadow-lg"
@@ -235,10 +191,9 @@ export default function QuestPage() {
               <span className="text-lg">📋</span>
               <span className="text-lg">🎯</span>
               <span className="text-lg">💡</span>
-              <button onClick={() => router.push('/')} className="text-lg mt-auto mb-4">🏠</button>
             </div>
           ) : (
-            sidebarContent
+            <QuestSidebar quest={quest} hintIndex={hintIndex} />
           )}
         </div>
 
@@ -251,20 +206,35 @@ export default function QuestPage() {
               <span className="w-2 h-2 rounded-full bg-yellow-500" />
               🧩 ブロックエディタ
             </div>
-            <button
-              data-tutorial-run
-              onClick={handleRun}
-              disabled={!skulptReady || isRunning || !code.trim()}
-              aria-label="コードを実行する"
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-2 px-5 rounded-lg flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100"
-              style={{ boxShadow: '0 0 12px rgba(34,197,94,0.3)' }}
-            >
-              ▶ 実行！
-            </button>
+            <div className="flex items-center gap-2">
+              {/* #24: Hint button always visible */}
+              <button
+                onClick={handleHint}
+                disabled={hintIndex >= quest.hints.length - 1}
+                className="text-sm text-yellow-400 hover:text-yellow-300 disabled:text-slate-600 transition-colors px-2 py-1"
+                aria-label="ヒントを表示"
+              >
+                💡 ヒント
+              </button>
+              <button
+                data-tutorial-run
+                onClick={handleRun}
+                disabled={!skulptReady || isRunning || !code.trim()}
+                aria-label="コードを実行する"
+                className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-2 px-5 rounded-lg flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+                style={{ boxShadow: '0 0 12px rgba(34,197,94,0.3)' }}
+              >
+                ▶ 実行！
+              </button>
+            </div>
           </div>
-          <div className="flex-1 min-h-[400px]">
+          <div className="flex-1 min-h-[300px]">
             <BlocklyEditor availableBlocks={quest.availableBlocks} onCodeChange={handleCodeChange} />
           </div>
+          {/* #24: Hint panel below editor */}
+          {hintIndex >= 0 && (
+            <HintPanel quest={quest} hintIndex={hintIndex} onUseHint={handleHint} />
+          )}
           <div className={`bg-[#0d0d1a] border-t-2 border-[#1e1e3a] px-4 py-2 relative z-10 code-display-area ${code ? 'code-flash' : ''}`} style={{ minHeight: '80px', maxHeight: '140px', overflowY: 'auto' }}>
             <div className="text-sm font-bold text-purple-400 mb-1">🐍 Pythonコード</div>
             {code ? (
@@ -275,7 +245,7 @@ export default function QuestPage() {
           </div>
         </div>
 
-        {/* Output - visible as third column on lg, tab on mobile */}
+        {/* #22: Output - split view on mobile too */}
         <div className={`${
           activeTab === 'output' ? 'flex flex-col' : 'hidden'
         } lg:flex lg:flex-col`}>
@@ -283,68 +253,12 @@ export default function QuestPage() {
         </div>
       </div>
 
-      {/* Mission intro modal */}
-      <AnimatePresence>
-        {showMissionIntro && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-            role="dialog"
-            aria-modal="true"
-            aria-label="ミッションイントロ"
-          >
-            <motion.div
-              initial={{ scale: 0.7, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.8, opacity: 0, y: -20 }}
-              transition={{ type: 'spring', bounce: 0.4 }}
-              className="bg-gradient-to-br from-[#1e1e3a] to-[#2a1a4a] border-2 border-purple-500 rounded-3xl p-8 text-center max-w-lg w-full mx-4"
-              style={{ boxShadow: '0 0 40px rgba(124,58,237,0.3)' }}
-            >
-              <motion.div
-                animate={{ y: [0, -8, 0] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="text-6xl mb-4"
-              >
-                {quest.npc.emoji}
-              </motion.div>
-              <div className="text-base text-purple-400 font-bold mb-2">{quest.npc.name}</div>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-purple-200 text-base leading-relaxed mb-5 whitespace-pre-line"
-              >
-                {quest.npc.dialogue}
-              </motion.p>
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-[#0a0a1a] border-2 border-yellow-500 rounded-xl p-4 mb-6"
-                style={{ boxShadow: '0 0 12px rgba(245,158,11,0.15)' }}
-              >
-                <div className="text-sm text-yellow-500 font-bold mb-2">🎯 ミッション</div>
-                <div className="font-mono text-lg text-yellow-400">{quest.description}</div>
-              </motion.div>
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => { setShowMissionIntro(false); setShowTutorial(true); }}
-                className="bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-3 px-8 rounded-xl text-lg"
-                style={{ boxShadow: '0 0 20px rgba(124,58,237,0.4)' }}
-              >
-                🚀 挑戦する！
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Modals */}
+      <MissionIntroModal
+        quest={quest}
+        isOpen={showMissionIntro}
+        onStart={() => { setShowMissionIntro(false); setShowTutorial(true); }}
+      />
 
       {showTutorial && (
         <Tutorial questId={quest.id} onComplete={() => setShowTutorial(false)} />
@@ -375,6 +289,14 @@ export default function QuestPage() {
         onHint={handleHint}
       />
 
+      {/* #28: Level up modal */}
+      <LevelUpModal
+        isOpen={showLevelUp}
+        level={levelUpInfo.level}
+        title={levelUpInfo.title}
+        onClose={() => setShowLevelUp(false)}
+      />
+
       <style jsx global>{`
         @keyframes float {
           0%, 100% { transform: translateY(0); }
@@ -383,10 +305,6 @@ export default function QuestPage() {
         @keyframes confettiFall {
           0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
           100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
         }
       `}</style>
     </div>

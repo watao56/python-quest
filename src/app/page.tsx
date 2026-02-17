@@ -5,15 +5,23 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/store/gameStore';
 import { quests } from '@/data/quests';
+import CoinShop from '@/components/CoinShop';
 
 export default function WorldMap() {
   const router = useRouter();
-  const { getLevel, getQuestProgress, xp } = useGameStore();
+  const { getLevel, getQuestProgress, xp, coins, theme, setTheme } = useGameStore();
   const { level, title } = getLevel();
+  const [showShop, setShowShop] = useState(false);
 
-  // SSR hydration fix (Issue #7)
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // #27: Apply theme class to html
+  useEffect(() => {
+    if (mounted) {
+      document.documentElement.classList.toggle('light-theme', theme === 'light');
+    }
+  }, [theme, mounted]);
 
   const handleQuestClick = (questId: string) => {
     const progress = getQuestProgress(questId);
@@ -31,11 +39,11 @@ export default function WorldMap() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] text-white flex flex-col">
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col">
       {/* Hero */}
       <div
         className="flex flex-col items-center px-4 sm:px-5 py-8 sm:py-12 relative"
-        style={{ background: 'radial-gradient(ellipse at center, #1a1040 0%, #0a0a1a 70%)' }}
+        style={{ background: 'radial-gradient(ellipse at center, var(--bg-hero) 0%, var(--bg-primary) 70%)' }}
       >
         <div
           className="absolute inset-0 opacity-5"
@@ -43,6 +51,23 @@ export default function WorldMap() {
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%237c3aed' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E")`,
           }}
         />
+
+        {/* #27: Theme toggle + #26: Shop button */}
+        <div className="absolute top-4 right-4 flex gap-2 z-10">
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="w-9 h-9 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center hover:scale-110 transition-transform"
+            aria-label="テーマ切替"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+          <button
+            onClick={() => setShowShop(true)}
+            className="flex items-center gap-1 bg-[var(--bg-secondary)] border border-yellow-500/50 rounded-full px-3 py-1.5 text-sm text-yellow-400 hover:scale-105 transition-transform"
+          >
+            💰 {coins}
+          </button>
+        </div>
 
         <motion.div
           initial={false}
@@ -59,9 +84,9 @@ export default function WorldMap() {
         </motion.div>
 
         <h1
-          className="text-xl sm:text-3xl mb-1 z-10"
+          className="text-xl sm:text-3xl mb-1 z-10 font-[var(--font-pixel)]"
           style={{
-            fontFamily: "'Press Start 2P', monospace",
+            fontFamily: "var(--font-pixel), 'Press Start 2P', monospace",
             background: 'linear-gradient(90deg, #a78bfa, #ec4899, #f59e0b)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -69,14 +94,14 @@ export default function WorldMap() {
         >
           Python Quest
         </h1>
-        <p className="text-slate-400 text-base mb-3 z-10">コードを書いて、世界を冒険しよう！</p>
+        <p className="text-[var(--text-secondary)] text-base mb-3 z-10">コードを書いて、世界を冒険しよう！</p>
 
         <div className="w-60 sm:w-72 z-10 mb-5">
-          <div className="flex justify-between text-sm text-slate-400 mb-1">
+          <div className="flex justify-between text-sm text-[var(--text-secondary)] mb-1">
             <span>Lv.{level} {title}</span>
             <span>{xp} XP</span>
           </div>
-          <div className="h-4 bg-[#1e1e3a] rounded-full border-2 border-[#2a2a4a] overflow-hidden">
+          <div className="h-4 bg-[var(--bg-tertiary)] rounded-full border-2 border-[var(--border)] overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-purple-600 to-pink-500"
               initial={false}
@@ -103,7 +128,7 @@ export default function WorldMap() {
       <div className="px-4 sm:px-5 pb-20 max-w-3xl mx-auto w-full">
         <h2
           className="text-center text-purple-400 mb-6 text-sm"
-          style={{ fontFamily: "'Press Start 2P', monospace" }}
+          style={{ fontFamily: "var(--font-pixel), 'Press Start 2P', monospace" }}
         >
           🌍 ワールド選択
         </h2>
@@ -111,19 +136,19 @@ export default function WorldMap() {
         {/* World 1 */}
         <motion.div initial={false} animate={{ x: 0, opacity: 1 }} className="mb-6">
           <div
-            className="flex items-center gap-3 sm:gap-4 bg-[#12122a] border-2 border-purple-500 rounded-2xl p-4 sm:p-5 mb-3"
+            className="flex items-center gap-3 sm:gap-4 bg-[var(--bg-secondary)] border-2 border-purple-500 rounded-2xl p-4 sm:p-5 mb-3"
             style={{ boxShadow: '0 0 20px rgba(124,58,237,0.2)' }}
           >
             <span className="text-3xl sm:text-4xl">🌱</span>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-base sm:text-lg">スクラッチの森</h3>
-              <p className="text-sm text-slate-400">ブロックを組み合わせてプログラミングの基本を学ぼう</p>
+              <p className="text-sm text-[var(--text-secondary)]">ブロックを組み合わせてプログラミングの基本を学ぼう</p>
             </div>
             <div className="text-right flex-shrink-0">
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-[var(--text-secondary)]">
                 {quests.filter((q) => getQuestProgress(q.id).status === 'cleared').length} / {quests.length}
               </div>
-              <div className="w-20 sm:w-28 h-2 bg-[#1e1e3a] rounded-full overflow-hidden mt-1">
+              <div className="w-20 sm:w-28 h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden mt-1">
                 <div
                   className="h-full bg-green-500 rounded-full"
                   style={{
@@ -136,7 +161,7 @@ export default function WorldMap() {
 
           {/* Quest Nodes */}
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 pl-4 sm:pl-14">
-            {quests.map((q, i) => {
+            {quests.map((q) => {
               const p = getQuestProgress(q.id);
               const isCleared = p.status === 'cleared';
               const isAvailable = p.status === 'available';
@@ -176,22 +201,25 @@ export default function WorldMap() {
           { emoji: '🔀', name: '変換の洞窟', desc: 'ブロックがPythonコードになる仕組みを覚えよう', unlock: 'Lv.4' },
           { emoji: '🐍', name: 'Pythonの大地', desc: '自分の手でPythonコードを書いてみよう', unlock: 'Lv.6' },
           { emoji: '🎨', name: 'turtleの草原', desc: 'コードで絵を描こう！', unlock: 'Lv.8' },
-        ].map((world, i) => (
+        ].map((world) => (
           <motion.div
             key={world.name}
             initial={false}
             animate={{ x: 0, opacity: 0.5 }}
-            className="flex items-center gap-3 sm:gap-4 bg-[#12122a] border-2 border-[#1e1e3a] rounded-2xl p-4 sm:p-5 mb-3 cursor-not-allowed"
+            className="flex items-center gap-3 sm:gap-4 bg-[var(--bg-secondary)] border-2 border-[var(--border)] rounded-2xl p-4 sm:p-5 mb-3 cursor-not-allowed"
           >
             <span className="text-3xl sm:text-4xl">{world.emoji}</span>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-base sm:text-lg">{world.name}</h3>
-              <p className="text-sm text-slate-400">{world.desc}</p>
+              <p className="text-sm text-[var(--text-secondary)]">{world.desc}</p>
             </div>
-            <div className="text-sm text-slate-400 flex-shrink-0">🔒 {world.unlock}で解放</div>
+            <div className="text-sm text-[var(--text-secondary)] flex-shrink-0">🔒 {world.unlock}で解放</div>
           </motion.div>
         ))}
       </div>
+
+      {/* #26: Coin Shop */}
+      <CoinShop isOpen={showShop} onClose={() => setShowShop(false)} />
     </div>
   );
 }
