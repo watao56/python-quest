@@ -117,7 +117,7 @@ export default function WorldMap() {
             <span className="text-3xl sm:text-4xl">🌱</span>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-base sm:text-lg">スクラッチの森</h3>
-              <p className="text-sm text-slate-500">ブロックを組み合わせてプログラミングの基本を学ぼう</p>
+              <p className="text-sm text-slate-400">ブロックを組み合わせてプログラミングの基本を学ぼう</p>
             </div>
             <div className="text-right flex-shrink-0">
               <div className="text-sm text-slate-400">
@@ -149,17 +149,18 @@ export default function WorldMap() {
                   animate={{ scale: 1 }}
                   onClick={() => handleQuestClick(q.id)}
                   disabled={isLocked}
+                  aria-label={`クエスト ${q.order}: ${q.title}${isCleared ? '（クリア済み）' : isLocked ? '（ロック中）' : '（挑戦可能）'}`}
                   className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm relative transition-transform hover:scale-110 mx-auto ${
                     isCleared
                       ? 'bg-[#0a2a0a] border-2 border-green-500 text-green-500'
                       : isAvailable
                         ? 'bg-[#2a1a4a] border-2 border-purple-400 text-purple-400 animate-pulse'
-                        : 'bg-[#1a1a2a] border-2 border-[#333] text-[#333] cursor-not-allowed'
+                        : 'bg-[#1a1a2a] border-2 border-slate-600 text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   {isLocked ? '🔒' : q.order}
                   {isCleared && p.stars > 0 && (
-                    <span className="absolute -top-2 text-[8px] whitespace-nowrap">
+                    <span className="absolute -top-2 text-[10px] whitespace-nowrap">
                       {'⭐'.repeat(p.stars)}
                       {'☆'.repeat(3 - p.stars)}
                     </span>
@@ -179,15 +180,15 @@ export default function WorldMap() {
           <motion.div
             key={world.name}
             initial={false}
-            animate={{ x: 0, opacity: 0.35 }}
+            animate={{ x: 0, opacity: 0.5 }}
             className="flex items-center gap-3 sm:gap-4 bg-[#12122a] border-2 border-[#1e1e3a] rounded-2xl p-4 sm:p-5 mb-3 cursor-not-allowed"
           >
             <span className="text-3xl sm:text-4xl">{world.emoji}</span>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-base sm:text-lg">{world.name}</h3>
-              <p className="text-sm text-slate-500">{world.desc}</p>
+              <p className="text-sm text-slate-400">{world.desc}</p>
             </div>
-            <div className="text-sm text-slate-500 flex-shrink-0">🔒 {world.unlock}で解放</div>
+            <div className="text-sm text-slate-400 flex-shrink-0">🔒 {world.unlock}で解放</div>
           </motion.div>
         ))}
       </div>

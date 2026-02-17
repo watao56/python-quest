@@ -16,7 +16,7 @@ export default function OutputPanel({ output, error, isRunning, hasRun }: Props)
         <span className="w-2 h-2 rounded-full bg-purple-500" />
         <span className="text-sm text-slate-400">📺 出力</span>
       </div>
-      <div className="flex-1 p-4 overflow-auto">
+      <div className="flex-1 p-4 overflow-auto" aria-live="polite" role="log" aria-label="プログラム出力">
         <AnimatePresence mode="wait">
           {isRunning ? (
             <motion.div
@@ -35,7 +35,7 @@ export default function OutputPanel({ output, error, isRunning, hasRun }: Props)
               className="flex flex-col items-center justify-center h-full gap-3"
             >
               <div className="text-5xl opacity-30 animate-bounce">🧩</div>
-              <p className="text-base text-[#4a4a6a]">▶ 実行するとここに表示</p>
+              <p className="text-base text-slate-400">▶ 実行するとここに表示</p>
             </motion.div>
           ) : error ? (
             <motion.div

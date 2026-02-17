@@ -51,6 +51,18 @@ export default function QuestPage() {
     loadSkulpt().then(setSkulptReady);
   }, []);
 
+  // Escape key to dismiss mission intro
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showMissionIntro) {
+        setShowMissionIntro(false);
+        setShowTutorial(true);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [showMissionIntro]);
+
   const handleCodeChange = useCallback((newCode: string) => {
     setCode(newCode);
   }, []);
@@ -168,7 +180,7 @@ export default function QuestPage() {
 
       <button
         onClick={() => router.push('/')}
-        className="text-sm text-slate-500 hover:text-slate-300 transition-colors mt-2"
+        className="text-sm text-slate-400 hover:text-slate-200 transition-colors mt-2"
       >
         ← マップに戻る
       </button>
@@ -188,7 +200,7 @@ export default function QuestPage() {
             className={`flex-1 py-2 text-sm font-bold transition-colors ${
               activeTab === tab
                 ? 'text-purple-400 border-b-2 border-purple-400'
-                : 'text-slate-500'
+                : 'text-slate-400'
             }`}
           >
             {tab === 'info' ? '📋 情報' : tab === 'editor' ? '🧩 エディタ' : '📺 出力'}
@@ -234,6 +246,7 @@ export default function QuestPage() {
               data-tutorial-run
               onClick={handleRun}
               disabled={!skulptReady || isRunning || !code.trim()}
+              aria-label="コードを実行する"
               className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-2 px-5 rounded-lg flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100"
               style={{ boxShadow: '0 0 12px rgba(34,197,94,0.3)' }}
             >
@@ -269,6 +282,9 @@ export default function QuestPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+            role="dialog"
+            aria-modal="true"
+            aria-label="ミッションイントロ"
           >
             <motion.div
               initial={{ scale: 0.7, opacity: 0, y: 40 }}

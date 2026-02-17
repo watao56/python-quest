@@ -14,22 +14,32 @@ export interface ExecutionResult {
 
 const MAX_EXECUTION_MS = 5000;
 
+function loadScript(src: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+async function loadSkulptFrom(base: string): Promise<boolean> {
+  const mainOk = await loadScript(`${base}/skulpt.min.js`);
+  if (!mainOk) return false;
+  return loadScript(`${base}/skulpt-stdlib.js`);
+}
+
 export async function loadSkulpt(): Promise<boolean> {
   if (typeof window !== 'undefined' && window.Sk) return true;
-  
-  return new Promise((resolve) => {
-    const script1 = document.createElement('script');
-    script1.src = 'https://skulpt.org/js/skulpt.min.js';
-    script1.onload = () => {
-      const script2 = document.createElement('script');
-      script2.src = 'https://skulpt.org/js/skulpt-stdlib.js';
-      script2.onload = () => resolve(true);
-      script2.onerror = () => resolve(false);
-      document.head.appendChild(script2);
-    };
-    script1.onerror = () => resolve(false);
-    document.head.appendChild(script1);
-  });
+
+  // Try CDN first, fall back to local bundle
+  const cdnOk = await loadSkulptFrom('https://skulpt.org/js');
+  if (cdnOk && window.Sk) return true;
+
+  // Fallback to local copy
+  const localOk = await loadSkulptFrom('/js');
+  return localOk && !!window.Sk;
 }
 
 export async function executePython(code: string): Promise<ExecutionResult> {
@@ -62,4 +72,3 @@ export async function executePython(code: string): Promise<ExecutionResult> {
   }
 }
 
-// Error translation moved to errorMessages.ts

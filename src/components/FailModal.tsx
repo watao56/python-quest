@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
@@ -40,6 +41,17 @@ function renderDiff(expected: string, actual: string) {
 }
 
 export default function FailModal({ isOpen, expected, actual, attempts, onRetry, onHint }: Props) {
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onRetry();
+  }, [onRetry]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -48,6 +60,9 @@ export default function FailModal({ isOpen, expected, actual, attempts, onRetry,
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          role="dialog"
+          aria-modal="true"
+          aria-label="ミッション失敗"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}

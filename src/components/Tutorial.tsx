@@ -122,7 +122,7 @@ export default function Tutorial({ questId, onComplete }: Props) {
           <div className="flex gap-3 justify-center">
             <button
               onClick={finish}
-              className="text-sm text-slate-500 hover:text-slate-300 transition-colors px-4 py-2"
+              className="text-sm text-slate-400 hover:text-slate-200 transition-colors px-4 py-2"
             >
               スキップ
             </button>

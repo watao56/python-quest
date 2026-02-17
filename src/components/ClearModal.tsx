@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface Props {
   isOpen: boolean;
@@ -35,6 +35,18 @@ export default function ClearModal({ isOpen, stars, xp, coins, questTitle, onNex
     Array<{ id: number; emoji: string; left: string; delay: string; duration: string; size: string }>
   >([]);
 
+  // Escape key to proceed
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onNext();
+  }, [onNext]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
+
   useEffect(() => {
     if (isOpen) {
       setConfetti(
@@ -58,6 +70,9 @@ export default function ClearModal({ isOpen, stars, xp, coins, questTitle, onNex
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          role="dialog"
+          aria-modal="true"
+          aria-label="クエストクリア"
         >
           {confetti.map((c) => (
             <div
