@@ -39,7 +39,7 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       toolbox: toolboxXml,
       theme: darkTheme,
       grid: { spacing: 20, length: 3, colour: '#2a2a4a', snap: true },
-      zoom: { controls: true, wheel: true, startScale: 0.5, maxScale: 2, minScale: 0.3 },
+      zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 2, minScale: 0.5 },
       trashcan: true,
       // @ts-expect-error flyoutAutoClose is valid but not in type definitions
       flyoutAutoClose: true,
@@ -64,8 +64,8 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       handleChange();
     });
 
-    // Fix #36: Prevent zoom from affecting flyout blocks
-    // Use MutationObserver to reset flyout SVG transform when zoom changes
+    // Fix #36: Flyout blocks at fixed smaller scale (independent of workspace zoom)
+    const FLYOUT_SCALE = 0.5;
     const flyoutSvg = containerRef.current?.querySelector('.blocklyFlyout');
     let flyoutObserver: MutationObserver | null = null;
     if (flyoutSvg) {
@@ -74,29 +74,27 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
         flyoutObserver = new MutationObserver(() => {
           const transform = blockCanvas.getAttribute('transform');
           if (transform) {
-            // Extract translate but force scale to 1
             const match = transform.match(/translate\(([^)]+)\)/);
-            if (match && transform.includes('scale')) {
-              blockCanvas.setAttribute('transform', `translate(${match[1]}) scale(1)`);
+            if (match) {
+              const desired = `translate(${match[1]}) scale(${FLYOUT_SCALE})`;
+              if (transform !== desired) {
+                blockCanvas.setAttribute('transform', desired);
+              }
             }
           }
         });
         flyoutObserver.observe(blockCanvas, { attributes: true, attributeFilter: ['transform'] });
       }
     }
-    // Also patch flyout workspace scale
+    // Patch flyout workspace scale property
     const flyoutWs = flyout?.getWorkspace();
     if (flyoutWs) {
       Object.defineProperty(flyoutWs, 'scale', {
-        get() { return 1; },
-        set() { /* noop — always 1 */ },
+        get() { return FLYOUT_SCALE; },
+        set() { /* noop — fixed scale */ },
         configurable: true,
       });
     }
-
-    // Explicitly set initial scale (startScale in config may be overridden by Blockly internals)
-    workspace.setScale(0.5);
-    workspace.scrollCenter();
 
     workspaceRef.current = workspace;
 
