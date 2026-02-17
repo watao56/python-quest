@@ -39,7 +39,7 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       toolbox: toolboxXml,
       theme: darkTheme,
       grid: { spacing: 20, length: 3, colour: '#2a2a4a', snap: true },
-      zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 2, minScale: 0.5 },
+      zoom: { controls: true, wheel: true, startScale: 0.8, maxScale: 2, minScale: 0.4 },
       trashcan: true,
       // @ts-expect-error flyoutAutoClose is valid but not in type definitions
       flyoutAutoClose: true,
