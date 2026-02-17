@@ -94,6 +94,10 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       });
     }
 
+    // Explicitly set initial scale (startScale in config may be overridden by Blockly internals)
+    workspace.setScale(0.5);
+    workspace.scrollCenter();
+
     workspaceRef.current = workspace;
 
     // Fix #34: ResizeObserver to handle sidebar open/close
