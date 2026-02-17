@@ -111,6 +111,15 @@ body {
 }
 .blockly-workspace-container {
   position: relative;
+  overflow: hidden;
+}
+
+.blockly-workspace-container .blocklySvg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
 }
 .blockly-workspace-container.has-blocks::before {
   display: none;

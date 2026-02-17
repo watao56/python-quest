@@ -85,7 +85,7 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
     <div
       ref={containerRef}
       className="blockly-workspace-container"
-      style={{ width: '100%', height: '100%', minHeight: '400px' }}
+      style={{ width: '100%', height: '100%', minHeight: '400px', position: 'relative', overflow: 'hidden' }}
     />
   );
 }
