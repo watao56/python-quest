@@ -134,6 +134,27 @@ body {
   display: none !important;
 }
 
+/* Fix #35: Toolbox/flyout close button visibility */
+.blocklyToolboxDiv {
+  z-index: 40 !important;
+  overflow: visible !important;
+}
+.blocklyFlyout {
+  z-index: 35 !important;
+}
+.blocklyToolboxCategory .blocklyTreeRow {
+  overflow: visible !important;
+}
+/* Ensure flyout button (close) is visible and not clipped */
+.blocklyFlyoutButton {
+  z-index: 45 !important;
+}
+
+/* Fix #36: Flyout blocks should not be affected by workspace zoom */
+.blocklyFlyout .blocklyWorkspace {
+  transform: scale(1) !important;
+}
+
 /* Issue #13: Mobile min height */
 @media (max-width: 768px) {
   .blockly-workspace-container {

@@ -51,6 +51,15 @@ export default function QuestPage() {
     loadSkulpt().then(setSkulptReady);
   }, []);
 
+  // Fix #34: Trigger Blockly resize when sidebar collapses/expands
+  useEffect(() => {
+    // Small delay to let CSS transition complete
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [sidebarCollapsed]);
+
   // Escape key to dismiss mission intro
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {

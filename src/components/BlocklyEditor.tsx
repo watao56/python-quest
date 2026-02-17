@@ -17,7 +17,6 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       const code = generatePython(workspaceRef.current);
       onCodeChange(code);
 
-      // Issue #13: hide workspace guide when blocks exist
       const el = containerRef.current;
       if (el) {
         const hasBlocks = workspaceRef.current.getAllBlocks(false).length > 0;
@@ -60,14 +59,19 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
       handleChange();
     });
 
-    // Prevent zoom from affecting flyout blocks
+    // Fix #36: Prevent zoom from affecting flyout blocks
+    // Reset flyout scale on any viewport change
     workspace.addChangeListener((e: any) => {
       if (e.type === Blockly.Events.VIEWPORT_CHANGE) {
-        const flyout = workspace.getFlyout();
-        if (flyout) {
-          const flyoutWorkspace = flyout.getWorkspace();
-          if (flyoutWorkspace && flyoutWorkspace.scale !== 1) {
-            flyoutWorkspace.setScale(1);
+        const ws = workspaceRef.current;
+        if (!ws) return;
+        const f = ws.getFlyout();
+        if (f) {
+          const fw = f.getWorkspace();
+          if (fw && fw.scale !== 1) {
+            fw.setScale(1);
+            // Force re-render of flyout contents at scale 1
+            try { f.reflow(); } catch { /* ignore if not available */ }
           }
         }
       }
@@ -75,7 +79,25 @@ export default function BlocklyEditor({ availableBlocks, onCodeChange }: Props) 
 
     workspaceRef.current = workspace;
 
+    // Fix #34: ResizeObserver to handle sidebar open/close
+    const resizeObserver = new ResizeObserver(() => {
+      if (workspaceRef.current) {
+        Blockly.svgResize(workspaceRef.current);
+      }
+    });
+    resizeObserver.observe(containerRef.current);
+
+    // Also listen for window resize
+    const handleWindowResize = () => {
+      if (workspaceRef.current) {
+        Blockly.svgResize(workspaceRef.current);
+      }
+    };
+    window.addEventListener('resize', handleWindowResize);
+
     return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
       workspace.dispose();
       workspaceRef.current = null;
     };
